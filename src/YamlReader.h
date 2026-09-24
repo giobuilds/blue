@@ -14,8 +14,9 @@
 #include <yaml.h>
 #include <cstdint>
 
-#ifdef __APPLE__
+#ifndef _WIN32
 #include <clocale>
+#include <locale.h>
 #endif
 
 
@@ -210,7 +211,7 @@ private:
 #ifdef _WIN32
 	// So user locale doesn't affect parsing results
 	_locale_t m_locale;
-#elif __APPLE__
+#else
 	locale_t m_locale;
 #endif
 

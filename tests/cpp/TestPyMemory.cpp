@@ -70,6 +70,8 @@ TEST_F( PythonMemoryAllocatorTest, GetInstalledCorrectly )
 	EXPECT_EQ( observed.free, &Ccp::MeasuredFree );
 }
 
+// The allocator accounts for the size the heap actually reserved (CCPMSize), which on Windows and macOS equals the
+// requested size for these requests but on glibc is malloc_usable_size and rounds up.
 TEST_F( PythonMemoryAllocatorTest, TracksAllocatedAmount )
 {
 	constexpr PyMemAllocatorDomain domain = PYMEM_DOMAIN_RAW;
@@ -80,11 +82,11 @@ TEST_F( PythonMemoryAllocatorTest, TracksAllocatedAmount )
 
 	auto mem = observed.malloc( observed.ctx, 128 );
 	CcpStatistics::Update();
-	EXPECT_EQ( int64_t( CCP_STATS_GET( pyMemory ) ), initial + 128 ) << "Malloc failed for Domain: " << domain;
+	EXPECT_EQ( int64_t( CCP_STATS_GET( pyMemory ) ), initial + int64_t( CCPMSize( mem ) ) ) << "Malloc failed for Domain: " << domain;
 
 	mem = observed.realloc( observed.ctx, mem, 256 );
 	CcpStatistics::Update();
-	EXPECT_EQ( int64_t( CCP_STATS_GET( pyMemory ) ), initial + 256 ) << "Realloc failed for Domain: " << domain;
+	EXPECT_EQ( int64_t( CCP_STATS_GET( pyMemory ) ), initial + int64_t( CCPMSize( mem ) ) ) << "Realloc failed for Domain: " << domain;
 
 	observed.free( observed.ctx, mem );
 	CcpStatistics::Update();
@@ -92,7 +94,7 @@ TEST_F( PythonMemoryAllocatorTest, TracksAllocatedAmount )
 
 	mem = observed.calloc( observed.ctx, 4, 256 );
 	CcpStatistics::Update();
-	EXPECT_EQ( int64_t( CCP_STATS_GET( pyMemory ) ), initial + 1024 ) << "Calloc failed for Domain: " << domain;
+	EXPECT_EQ( int64_t( CCP_STATS_GET( pyMemory ) ), initial + int64_t( CCPMSize( mem ) ) ) << "Calloc failed for Domain: " << domain;
 
 	observed.free( observed.ctx, mem );
 	CcpStatistics::Update();

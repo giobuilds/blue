@@ -170,6 +170,10 @@ BlueOsError::~BlueOsError()
 BlueOsError::BlueOsError( IBlueOS::OsErrorType error )
 {
     char buffer[128];
+#if defined(__GLIBC__) && defined(_GNU_SOURCE)
+    // GNU strerror_r returns the message, which need not be stored in buffer.
+    message = strdup( strerror_r( error, buffer, sizeof( buffer ) ) );
+#else
     if( strerror_r( error, buffer, sizeof( buffer ) ) == 0 )
     {
         message = strdup( buffer );
@@ -178,6 +182,7 @@ BlueOsError::BlueOsError( IBlueOS::OsErrorType error )
     {
         message = nullptr;
     }
+#endif
 }
 
 BlueOsError::~BlueOsError()
@@ -2229,6 +2234,8 @@ void BlueOS::ShowErrorMessageBox( const wchar_t* title, const wchar_t* message )
 
 	CFRelease( titleRef );
 	CFRelease( messageRef );
+#else
+	fprintf( stderr, "%ls: %ls\n", title, message );
 #endif
 }
 

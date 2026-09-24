@@ -13,6 +13,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#elif defined(__linux__)
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #endif
 
 namespace
@@ -189,6 +194,11 @@ private:
 				free( path );
 			}
 		}
+#elif defined(__linux__)
+		gethostname( m_machineName, sizeof( m_machineName ) );
+		m_machineName[sizeof( m_machineName ) - 1] = 0;
+		ssize_t length = readlink( "/proc/self/exe", m_executablePath, sizeof( m_executablePath ) - 1 );
+		m_executablePath[length > 0 ? length : 0] = 0;
 #endif
 	}
 

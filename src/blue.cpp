@@ -27,8 +27,17 @@ std::wstring s_logDeviceName( L"EVE" );
 #ifdef _WIN32
 #include "win32.h"
 static HINSTANCE s_instance = NULL;
-#elif defined(__APPLE__)
+#else
 #include <fcntl.h>
+#include <sys/file.h>
+#ifndef O_SHLOCK
+// Linux has no BSD open()-time locks; take the equivalent flock() right after opening.
+#define O_SHLOCK 0
+#define O_EXLOCK 0
+#define BLUE_FLOCK_AFTER_OPEN 1
+#else
+#define BLUE_FLOCK_AFTER_OPEN 0
+#endif
 #endif
 
 // The templated container classes need special treatment here. Generally
@@ -168,7 +177,7 @@ HERR:
 		CloseHandle(h);
 	return 0;
 
-#elif defined(__APPLE__)
+#else
 	wchar_t* tmp = PyUnicode_AsWideCharString( ufn.o, nullptr );
 	if ( !tmp )
 	{
@@ -183,6 +192,9 @@ HERR:
         f = open( filenameStr, O_RDONLY | O_SHLOCK );
 		if( f >= 0 )
 		{
+#if BLUE_FLOCK_AFTER_OPEN
+			flock( f, LOCK_SH );
+#endif
             fileSize = lseek( f, 0, SEEK_END );
             lseek( f, 0, SEEK_SET );
         }
@@ -210,8 +222,6 @@ HERR:
 	}
 	return r.Detach();
 
-#else
-#error PyAtomicFileRead implementation missing
 #endif
 }
 
@@ -279,7 +289,7 @@ HERR:
 		CloseHandle(h);
 	return 0;
 
-#elif defined(__APPLE__)
+#else
 
 	Py_UNICODE *fileName = PyUnicode_AsWideCharString(ufn, nullptr);
 	CW2A filenameStr( reinterpret_cast<const wchar_t*>( fileName ) );
@@ -287,6 +297,12 @@ HERR:
 	{
 		Ccp::PyAllowThreads _allow;
 		f = open( filenameStr, O_WRONLY | O_EXLOCK | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR );
+#if BLUE_FLOCK_AFTER_OPEN
+		if( f >= 0 )
+		{
+			flock( f, LOCK_EX );
+		}
+#endif
     }
     if( f < 0 )
     {
@@ -304,8 +320,6 @@ HERR:
 	}
 	Py_RETURN_NONE;
 
-#else
-#error PyAtomicFileWrite implementation missing
 #endif
 }
 
@@ -459,7 +473,11 @@ void LogToCrashReporter( CcpLogChannel_t& logObject, CCP::LogType type, unsigned
 void BlueSetCrashReporter( ICrashReporter* crashReporter )
 {
 	BeCrashes = crashReporter;
-	CCP::RegisterLogEcho(LogToCrashReporter, CCP::LOGTYPE_ERR, true);
+	// The host may run without a crash reporter (exefile built without Crashpad); nothing to echo to then.
+	if( crashReporter )
+	{
+		CCP::RegisterLogEcho(LogToCrashReporter, CCP::LOGTYPE_ERR, true);
+	}
 }
 
 void BlueLogFuncChannel( CcpLogChannel_t& logObject, CCP::LogType type, unsigned long userData, const char* format, va_list args )

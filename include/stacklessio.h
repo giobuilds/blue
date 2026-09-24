@@ -88,7 +88,7 @@
 #include <deque>
 #include <vector>
 
-#if defined _WIN32
+#if defined _WIN32 || defined __linux__
 #include <unordered_map>
 #include <unordered_set>
 #elif defined __APPLE__
@@ -256,7 +256,7 @@ private:
     static DWORD WINAPI WorkCallback(LPVOID lpParameter);
     Ccp::Mutex mut;
 };
-#elif defined __APPLE__
+#else
 class IORuntimeSvc : public IIORuntimeSvc
 {
 public:
@@ -439,7 +439,7 @@ private:
 		};
 	};
 	Ccp::Mutex mTimerCS;					// Guarding the timers
-#ifdef _WIN32
+#if defined _WIN32 || defined __linux__
     typedef const void *map_key_t;
     typedef std::unordered_map<map_key_t, Timer> timermap_t;
     typedef std::unordered_set<std::string> timerset_t;
@@ -498,7 +498,8 @@ template class BLUEIMPORT Ccp::PyGenericObjectPtr<PyChannelObject>;
 // deletion top happen with the GIL held, another reason to use the
 // aforementioned "dustbin" mechanism.  This can of course be overridden
 // by child classes.
-#ifndef __APPLE__
+#ifdef _WIN32
+// On POSIX Ccp::Atomic32 is a typedef in BluePlatformPosix.h, not a class.
 namespace Ccp
 {
     PyAPI_CLASS(Atomic32);

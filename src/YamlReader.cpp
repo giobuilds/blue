@@ -18,7 +18,20 @@
 #elif _WIN32
 #include <clocale>
 #else
-#error "Unsupported platform"
+#include <clocale>
+#include <locale.h>
+#include <stdlib.h>
+
+// glibc has the strto*_l family but not the BSD atoi_l/atof_l shorthands.
+static inline int atoi_l( const char* str, locale_t locale )
+{
+	return int( strtol_l( str, nullptr, 10, locale ) );
+}
+
+static inline double atof_l( const char* str, locale_t locale )
+{
+	return strtod_l( str, nullptr, locale );
+}
 #endif
 
 namespace
@@ -56,7 +69,7 @@ YamlReader::YamlReader() :
 #ifdef _WIN32
 	,
 	m_locale( _create_locale( LC_ALL, "en_US" ) )
-#elif __APPLE__
+#else
 	,
 	m_locale( newlocale(LC_ALL_MASK, "C", 0 ) )
 #endif
@@ -87,7 +100,7 @@ YamlReader::~YamlReader()
 	}
 #ifdef _WIN32
 	_free_locale( m_locale );
-#elif __APPLE__
+#else
 	freelocale( m_locale );
 #endif
 }

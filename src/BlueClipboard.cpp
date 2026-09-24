@@ -90,3 +90,29 @@ BlueClipboard::OperationResult BlueClipboard::SetData( const std::wstring& data 
 	return ::SetData( CF_UNICODETEXT, data );
 }
 #endif
+
+#ifdef __linux__
+
+// No clipboard integration on Linux yet: it needs a display-server protocol (X11 selections or Wayland
+// wl_data_device), which blue does not talk to. Report failure so callers fall back gracefully.
+BlueClipboard::OperationResult BlueClipboard::GetData( std::string& ) const
+{
+	return CLIPBOARD_FAILURE;
+}
+
+BlueClipboard::OperationResult BlueClipboard::GetData( std::wstring& ) const
+{
+	return CLIPBOARD_FAILURE;
+}
+
+BlueClipboard::OperationResult BlueClipboard::SetData( const std::string& )
+{
+	return CLIPBOARD_FAILURE;
+}
+
+BlueClipboard::OperationResult BlueClipboard::SetData( const std::wstring& )
+{
+	return CLIPBOARD_FAILURE;
+}
+
+#endif // __linux__

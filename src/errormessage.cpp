@@ -266,7 +266,27 @@ std::string GetOSLanguageCode()
 
 	return *result;
 #else
-#error Unsupported platform!
+	// POSIX: LC_ALL / LC_MESSAGES / LANG hold values such as "de_DE.UTF-8"; match the primary language tag.
+	static const char* const envNames[] = { "LC_ALL", "LC_MESSAGES", "LANG" };
+	for( const char* name : envNames )
+	{
+		const char* value = getenv( name );
+		if( !value || !*value )
+		{
+			continue;
+		}
+		std::string primary( value );
+		primary = primary.substr( 0, primary.find_first_of( "_.@-" ) );
+		for( auto iter = allSupportedLanguageTags.begin(); iter != allSupportedLanguageTags.end(); ++iter )
+		{
+			if( *iter == primary )
+			{
+				return *iter;
+			}
+		}
+		break;
+	}
+	return en;
 #endif
 }
 
@@ -330,7 +350,7 @@ void BlueShowInvalidOSVersionError()
 #elif __APPLE__
 	std::string localizedMessage = TranslateErrorMessage( "Invalid macOS version", IDS_INVALIDMACOS );
 #else
-	#error Unsupported platform!
+	std::string localizedMessage = TranslateErrorMessage( "Unsupported operating system version", 0 );
 #endif
 	std::string localizedTitle = TranslateErrorMessage( "Verification Failure", IDS_VERIFYFAIL_C );
 	DisplayErrorMessageBox(localizedTitle.c_str(), localizedMessage.c_str());
@@ -366,6 +386,8 @@ void DisplayErrorMessageBox( const char* title, const char* message )
 		CFRelease( messageRef );
 	}
 #else
-#error Unsupported platform!
+	// No native message box without a display server; report through the log and stderr.
+	CCP_LOGERR( "%s: %s", title, message );
+	fprintf( stderr, "%s: %s\n", title, message );
 #endif
 }

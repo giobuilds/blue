@@ -23,9 +23,11 @@
 #include <string>
 #include <stdexcept>
 
-#ifdef __APPLE__
 #include <atomic>
+#ifdef __APPLE__
 #include <mach/mach_time.h> // for high resolution timer
+#elif defined(__linux__)
+#include <time.h>
 #endif
 
 // Various defines
@@ -355,6 +357,19 @@ namespace Ccp
             factor /= 1e-9; // to give seconds
         }
         return (double)t * factor;
+    }
+#elif defined(__linux__)
+    // performance time: monotonic nanoseconds
+    typedef int64_t performance_t;
+    inline performance_t GetPerformanceTime() {
+        timespec ts;
+        clock_gettime( CLOCK_MONOTONIC, &ts );
+        return performance_t( ts.tv_sec ) * 1000000000LL + ts.tv_nsec;
+    }
+
+    inline double PerformanceTimeToS(performance_t t)
+    {
+        return (double)t * 1e-9;
     }
 #endif
 

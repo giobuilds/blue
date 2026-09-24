@@ -150,8 +150,10 @@ BLUE_INTERFACE(IBlueOS) : public IRoot
 
 #if _WIN32
     typedef DWORD OsErrorType;
-#else
+#elif defined(__APPLE__)
     typedef errno_t OsErrorType;
+#else
+    typedef int OsErrorType; // glibc has no errno_t; errno is an int
 #endif
     
 	struct Error

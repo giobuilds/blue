@@ -6,6 +6,10 @@
 
 #if __APPLE__
 #include <sys/sysctl.h>
+#elif defined(__linux__)
+#include <dirent.h>
+#include <cstdlib>
+#include <cstring>
 #endif
 
 #if BLUE_WITH_PYTHON
@@ -160,6 +164,45 @@ static PyObject *PyGetExeFilePids( PyObject* self, PyObject* args)
         }
     }
 
+    return list;
+}
+#elif defined(__linux__)
+
+// Walk /proc and collect the pids whose command name is exefile (any build flavor suffix).
+static PyObject *PyGetExeFilePids( PyObject* self, PyObject* args)
+{
+    if( !PyArg_ParseTuple( args, "" ) )
+    {
+        return nullptr;
+    }
+    PyObject* list = PyList_New( 0 );
+    DIR* proc = opendir( "/proc" );
+    if( !proc )
+    {
+        return list;
+    }
+    while( dirent* entry = readdir( proc ) )
+    {
+        char* end = nullptr;
+        long pid = strtol( entry->d_name, &end, 10 );
+        if( !end || *end )
+        {
+            continue;
+        }
+        std::string commPath = std::string( "/proc/" ) + entry->d_name + "/comm";
+        FILE* comm = fopen( commPath.c_str(), "r" );
+        if( !comm )
+        {
+            continue;
+        }
+        char name[64] = { 0 };
+        if( fgets( name, sizeof( name ), comm ) && strncmp( name, "exefile", 7 ) == 0 )
+        {
+            PyList_Append( list, BluePy( PyLong_FromLong( pid ) ) );
+        }
+        fclose( comm );
+    }
+    closedir( proc );
     return list;
 }
 #endif
