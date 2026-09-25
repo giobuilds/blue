@@ -93,26 +93,49 @@ BlueClipboard::OperationResult BlueClipboard::SetData( const std::wstring& data 
 
 #ifdef __linux__
 
-// No clipboard integration on Linux yet: it needs a display-server protocol (X11 selections or Wayland
-// wl_data_device), which blue does not talk to. Report failure so callers fall back gracefully.
-BlueClipboard::OperationResult BlueClipboard::GetData( std::string& ) const
+#include "BluePlatformServices.h"
+#include "StringConversions.h"
+
+// The clipboard belongs to the display server; the renderer's window layer provides it (BluePlatformServices).
+namespace
 {
-	return CLIPBOARD_FAILURE;
+const BluePlatformServices* s_services = nullptr;
 }
 
-BlueClipboard::OperationResult BlueClipboard::GetData( std::wstring& ) const
+void BlueSetPlatformServices( const BluePlatformServices* services )
 {
-	return CLIPBOARD_FAILURE;
+	s_services = services;
 }
 
-BlueClipboard::OperationResult BlueClipboard::SetData( const std::string& )
+const BluePlatformServices* BlueGetPlatformServices()
 {
-	return CLIPBOARD_FAILURE;
+	return s_services;
 }
 
-BlueClipboard::OperationResult BlueClipboard::SetData( const std::wstring& )
+BlueClipboard::OperationResult BlueClipboard::GetData( std::string& data ) const
 {
-	return CLIPBOARD_FAILURE;
+	return s_services && s_services->getClipboardText && s_services->getClipboardText( data ) ? CLIPBOARD_OK : CLIPBOARD_FAILURE;
+}
+
+BlueClipboard::OperationResult BlueClipboard::GetData( std::wstring& data ) const
+{
+	std::string utf8;
+	auto result = GetData( utf8 );
+	if( result == CLIPBOARD_OK )
+	{
+		data = UTF8ToWide( utf8 );
+	}
+	return result;
+}
+
+BlueClipboard::OperationResult BlueClipboard::SetData( const std::string& data )
+{
+	return s_services && s_services->setClipboardText && s_services->setClipboardText( data ) ? CLIPBOARD_OK : CLIPBOARD_FAILURE;
+}
+
+BlueClipboard::OperationResult BlueClipboard::SetData( const std::wstring& data )
+{
+	return SetData( WideToUTF8( data ) );
 }
 
 #endif // __linux__

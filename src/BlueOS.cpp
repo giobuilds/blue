@@ -1,6 +1,8 @@
 // Copyright © 2014 CCP ehf.
 
 #include "StdAfx.h"
+#include "BluePlatformServices.h"
+#include "StringConversions.h"
 
 #ifdef __APPLE__
 #include <CoreFoundation/CoreFoundation.h>
@@ -2235,6 +2237,16 @@ void BlueOS::ShowErrorMessageBox( const wchar_t* title, const wchar_t* message )
 	CFRelease( titleRef );
 	CFRelease( messageRef );
 #else
+	// The window layer shows it if one has registered (BluePlatformServices); stderr otherwise.
+	auto services = BlueGetPlatformServices();
+	if( services && services->showMessageBox )
+	{
+		std::string t = WideToUTF8( title ), m = WideToUTF8( message );
+		if( services->showMessageBox( t.c_str(), m.c_str() ) )
+		{
+			return;
+		}
+	}
 	fprintf( stderr, "%ls: %ls\n", title, message );
 #endif
 }

@@ -1,6 +1,7 @@
 // Copyright © 2021 CCP ehf.
 
 #include "StdAfx.h"
+#include "BluePlatformServices.h"
 
 #include "IBlueOS.h"
 #include "errormessage.h"
@@ -386,8 +387,13 @@ void DisplayErrorMessageBox( const char* title, const char* message )
 		CFRelease( messageRef );
 	}
 #else
-	// No native message box without a display server; report through the log and stderr.
+	// Linux: the renderer's window layer shows it when one has registered (BluePlatformServices); the log and stderr
+	// always get it.
 	CCP_LOGERR( "%s: %s", title, message );
-	fprintf( stderr, "%s: %s\n", title, message );
+	auto services = BlueGetPlatformServices();
+	if( !services || !services->showMessageBox || !services->showMessageBox( title, message ) )
+	{
+		fprintf( stderr, "%s: %s\n", title, message );
+	}
 #endif
 }

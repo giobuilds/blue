@@ -24,6 +24,7 @@ find_package(Python3 COMPONENTS Interpreter REQUIRED)
 set(PUBLIC_HEADER_FILES_INCLUDE
     include/Blue.h
     include/BlueAsyncRes.h
+    include/BluePlatformServices.h
     include/BluePySwrap.h
     include/BlueStatistics.h
     include/IBlueCallbackMan.h
